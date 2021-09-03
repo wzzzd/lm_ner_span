@@ -26,7 +26,6 @@ class Config(object):
         self.num_warmup_steps = 0.1                                 # warm up步数
         self.sen_max_length = 128                                   # 句子最长长度
         self.padding = True                                         # 是否对输入进行padding
-        # self.tag_type = ['O','LOC','CONT','TITLE','PRO','NAME','EDU','ORG','RACE']  #['O','ORG','LOC']
         self.step_save = 60
 
         # 模型及路径配置
