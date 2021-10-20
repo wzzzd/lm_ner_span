@@ -29,8 +29,8 @@ class Config(object):
         self.step_save = 60
 
         # 模型及路径配置
-        self.initial_pretrain_model = 'bert-base-uncased'           # 加载的预训练分词器checkpoint，默认为英文。若要选择中文，替换成 bert-base-chinese
-        self.initial_pretrain_tokenizer = 'bert-base-uncased'       # 加载的预训练模型checkpoint，默认为英文。若要选择中文，替换成 bert-base-chinese
+        self.initial_pretrain_model = 'bert-base-chinese'           # 加载的预训练分词器checkpoint，默认为英文。若要选择中文，替换成 bert-base-chinese
+        self.initial_pretrain_tokenizer = 'bert-base-chinese'       # 加载的预训练模型checkpoint，默认为英文。若要选择中文，替换成 bert-base-chinese
         self.path_model_save = './checkpoint/'                      # 模型保存路径
         self.path_datasets = './data/CNER/'             # 数据集
         self.path_log = './logs/'
