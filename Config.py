@@ -9,7 +9,7 @@ class Config(object):
     
     def __init__(self):
         
-        # 
+        # 运行模式
         self.mode = 'train'
         
         # GPU配置
