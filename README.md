@@ -6,7 +6,7 @@
 ## 思路
 将序列标注任务，转换成预测实体在文本中的实体头部的索引和实体尾部的索引
 
-<img src=./file/pic.jpg width=80% />
+<img src=./file/pic.jpg width=100% />
 
 ## Requirement
 ```
