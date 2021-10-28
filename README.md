@@ -1,6 +1,7 @@
 # LM_SPAN
-基于实体首尾指针SPAN的 序列标注/命名实体识别 框架
-主要框架是pytorch，base model使用的是bert，基于huggingface/transformers。
+基于实体首尾指针SPAN的 序列标注/命名实体识别 框架。
+
+基于pytorch，base model使用的是bert，基于huggingface/transformers。
 
 
 ## 思路
@@ -9,8 +10,26 @@
 <img src=./file/pic.jpg width=100% />
 
 
+## 数据集
+* **CNER**
+    * 来自：https://github.com/lonePatient/BERT-NER-Pytorch
+    * 关于简历的的数据。
+    * 数据分为8类标签类别，分别为：
+    ```
+        国家（CONT）
+        民族（RACE）
+        姓名（NAME）
+        组织（ORG）
+        地址（LOC）
+        专业（PRO）
+        学历（EDU）
+        职称（TITLE）
+    ```
+
+
 ## 训练过程
 <img src=./file/train.png width=100% />
+
 
 ## Requirement
 ```
@@ -25,6 +44,7 @@
 ```
     pip install -r requirement.txt
 ```
+
 
 ## Get Start
 运行以下命令
