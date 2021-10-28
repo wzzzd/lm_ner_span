@@ -6,14 +6,12 @@ import math
 import numpy as np
 import pandas as pd
 import torch
-from tqdm.auto import tqdm
+# from tqdm.auto import tqdm
 from datasets import Dataset, load_dataset, load_metric
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, DataCollatorWithPadding, BertTokenizer
-
 from torch.utils.data import DataLoader, TensorDataset, RandomSampler
 from torch.utils.data.distributed import DistributedSampler
-
 from utils.IOOption import open_file, write_text
 
 
@@ -42,13 +40,13 @@ class DataManager(object):
         数据转换
         """
         # 获取数据
-        src, tgt = open_file(self.config.path_datasets + file_name, sep='\t')
+        src, tgt = open_file(self.config.path_datasets + file_name, sep=' ')
         src = [str(x) for x in src]
         # tgt = [str(x) for x in tgt]
         # 获取标签
         if self.config.mode=='train':
-            tag = list(set([str(x).replace('B-','').replace('I-','') for line in tgt for x in line]))
-            # tag = list(set([re.sub(r'[B-|I-]', '', str(x)) for line in tgt for x in line]))
+            tag = list(set([re.sub('B-|I-|M-|E-|S-', '', str(x)) for line in tgt for x in line])) 
+            # tag = list(set([str(x).replace('B-','').replace('I-','') for line in tgt for x in line])) 
             self.label2ids = {x:i for i,x in enumerate(tag)}
             self.ids2label = {i:x for i,x in enumerate(tag)}
             write_text(list(self.label2ids.keys()), self.config.path_datasets+'label.txt')
@@ -63,13 +61,9 @@ class DataManager(object):
         # tokenizer.
         tokenized_datasets = raw_datasets.map(lambda x: self.tokenize_function(x), batched=True)        # 对于样本中每条数据进行数据转换
         data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)                               # 对数据进行padding
-        # label_entity = tokenized_datasets['label_entity']
-        # label_entity = [ x for x in label_entity if x != []]
         tokenized_datasets = tokenized_datasets.remove_columns(["src","labels"])                        # 移除不需要的字段
         tokenized_datasets.set_format("torch")                                                           # 格式转换
         # 转换成DataLoader类
-        # train_dataloader = DataLoader(tokenized_datasets, shuffle=True, batch_size=config.batch_size, collate_fn=data_collator)
-        # eval_dataloader = DataLoader(tokenized_datasets_test, batch_size=config.batch_size, collate_fn=data_collator)
         sampler = RandomSampler(tokenized_datasets) if not torch.cuda.device_count() > 1 else DistributedSampler(tokenized_datasets)
         dataloader = DataLoader(tokenized_datasets, sampler=sampler, batch_size=self.config.batch_size, collate_fn=data_collator)
 
@@ -81,20 +75,21 @@ class DataManager(object):
         数据转换
         """
         # 分词
-        # src = [self.tokenizer.convert_tokens_to_string(x.split(' ')) for x in example["src"]]
-        # token = self.tokenizer(src, truncation=True, max_length=self.config.sen_max_length, padding=self.config.padding)
-        token = self.tokenizer(example["src"], truncation=True, max_length=self.config.sen_max_length, padding=self.config.padding)
+        token = {}
+        src = [self.tokenizer.convert_tokens_to_ids(x.split(' ')) for x in example["src"]]
+        src = [self.padding(x, max_length=self.config.sen_max_length) for x in src]
+        
         # 标签处理
         # 获取标签实体
-        # label_entity = [ eval(line) for line in example['labels']]
         label_entity = [self.get_entity(line[:self.config.sen_max_length-2]) for line in example['labels']]
-        # lab = [ x for x in label_entity if x != []]
+
         # 获取表示首尾label向量
         label_start = []
         label_end = []
         for line in label_entity:
-            start_ids = [0] * self.config.sen_max_length
-            end_ids = [0] * self.config.sen_max_length
+            init_ids = self.label2ids['O']
+            start_ids = [init_ids] * self.config.sen_max_length
+            end_ids = [init_ids] * self.config.sen_max_length
             for entity in line:
                 # 样本的开始和结果索引,因为token第一位加入了[CLS]，所以index要+1
                 tmp_label = entity[0]
@@ -107,10 +102,28 @@ class DataManager(object):
             label_start.append(start_ids)
             label_end.append(end_ids)
         # 添加标签到样本中
-        token.data['label_start'] = label_start
-        token.data['label_end'] = label_end
-        # token.data['label_entity'] = label_entity
+        token = {
+            'input_ids':src,
+            'label_start':label_start,
+            'label_end':label_end
+        }
         return token
+
+
+
+    def padding(self, src, max_length=256):
+        """
+        padding
+        """
+        # 裁剪
+        if len(src) > max_length-2:
+            src = src[:max_length-2]
+        # padding
+        pad_size = max_length-2-len(src)
+        src = [self.tokenizer.cls_token_id] + src + [self.tokenizer.pad_token_id]*pad_size + [self.tokenizer.sep_token_id]
+        assert len(src) == max_length, 'input no equal {}'.format(max_length)
+        return src
+        
 
 
     def get_entity(self, seq):

@@ -8,12 +8,17 @@
 
 <img src=./file/pic.jpg width=100% />
 
+
+## 训练过程
+<img src=./file/train.png width=100% />
+
 ## Requirement
 ```
     python3.6
     numpy==1.19.5
     pandas==1.1.3
     torch==1.3.0
+    datasets==1.10.2
     transformers==4.6.1
 ```
 可通过以下命令安装依赖包

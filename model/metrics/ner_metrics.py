@@ -44,10 +44,10 @@ class SpanEntityScore(object):
         self.rights.extend([pre_entity for pre_entity in pred_subject if pre_entity in true_subject])
 
 
-def bert_extract_item(line_start, line_end):
+def bert_extract_item(line_start, line_end, label2id):
     S = []
     for i, s_l in enumerate(line_start):
-        if s_l == 0:
+        if s_l == label2id['O']:
             continue
         for j, e_l in enumerate(line_end[i:]):
             if s_l == e_l:
@@ -57,59 +57,3 @@ def bert_extract_item(line_start, line_end):
 
 
 
-# def bert_extract_item(start_logits, end_logits):
-#     S = []
-#     # 区分是ground true还是prediction
-#     if len(start_logits.size()) == 2:
-#         start_pred = start_logits.cpu().numpy()[:,1:-1]
-#         end_pred = end_logits.cpu().numpy()[:,1:-1]
-#     else:
-#         start_pred = torch.argmax(start_logits, -1)[:,1:-1].cpu().numpy()
-#         end_pred = torch.argmax(end_logits, -1)[:,1:-1].cpu().numpy()
-        
-#     for line_start, line_end in zip(start_pred, end_pred):
-#         for i, s_l in enumerate(line_start):
-#             if s_l == 0:
-#                 continue
-#             for j, e_l in enumerate(line_end[i:]):
-#                 if s_l == e_l:
-#                     S.append((s_l, i, i + j))
-#                     break
-#         # print(1)
-        
-#     return S
-
-
-
-# def bert_extract_item(start_logits, end_logits):
-#     S = []
-#     # zero = torch.zeros_like(start_logits)
-#     # 若start_logits为非全0tensor
-#     # if (start_logits!=zero).sum() != 0:
-#     if len(start_logits.size()) == 2:
-#         start_pred = start_logits.cpu().numpy()[:,1:-1]
-#         end_pred = end_logits.cpu().numpy()[:,1:-1]
-#         for line_start, line_end in zip(start_pred, end_pred):
-#             for i, s_l in enumerate(line_start):
-#                 if s_l == 0:
-#                     continue
-#                 for j, e_l in enumerate(line_end[i:]):
-#                     if s_l == e_l:
-#                         S.append((s_l, i, i + j))
-#                         break
-#             # if S != []:
-#             #     print(1)
-#     else:
-#         start_pred = torch.argmax(start_logits, -1)[:,1:-1].cpu().numpy()
-#         end_pred = torch.argmax(end_logits, -1)[:,1:-1].cpu().numpy()
-#         for line_start, line_end in zip(start_pred, end_pred):
-#             for i, s_l in enumerate(line_start):
-#                 if s_l == 0:
-#                     continue
-#                 for j, e_l in enumerate(line_end[i:]):
-#                     if s_l == e_l:
-#                         S.append((s_l, i, i + j))
-#                         break
-#         # print(1)
-        
-#     return S

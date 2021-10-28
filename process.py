@@ -41,17 +41,47 @@ def train(config, train_ld, valid_loader, test_loader):
     model_config = BertConfig.from_pretrained(config.initial_pretrain_model, num_labels=num_labels)
     model = BertSpanForNer.from_pretrained(config.initial_pretrain_model, config=model_config)
     optimizer = AdamW(model.parameters(), lr=config.learning_rate)
+    
     # for param in model.base_model.parameters():
-    #     param.requires_grad = False
+    #     param.requires_grad = True
+    
+    
+    # weight decay
+    bert_parameters = model.bert.named_parameters()
+    start_parameters = model.start_fc.named_parameters()
+    end_parameters = model.end_fc.named_parameters()
+    
+    no_decay = ["bias", "LayerNorm.weight"]
+    optimizer_grouped_parameters = [
+        {"params": [p for n, p in bert_parameters if not any(nd in n for nd in no_decay)],
+         "weight_decay": 0.01, 'lr': config.learning_rate},
+        {"params": [p for n, p in bert_parameters if any(nd in n for nd in no_decay)], "weight_decay": 0.0
+            , 'lr': config.learning_rate},
 
-    # 定义优化器配置
-    num_training_steps = config.num_epochs * len(train_ld)
-    lr_scheduler = get_scheduler(
-        "linear",
-        optimizer=optimizer,
-        num_warmup_steps=config.num_warmup_steps,
-        num_training_steps=num_training_steps
-    )
+        {"params": [p for n, p in start_parameters if not any(nd in n for nd in no_decay)],
+         "weight_decay": 0.01, 'lr': 0.001},
+        {"params": [p for n, p in start_parameters if any(nd in n for nd in no_decay)], "weight_decay": 0.0
+            , 'lr': 0.001},
+
+        {"params": [p for n, p in end_parameters if not any(nd in n for nd in no_decay)],
+         "weight_decay": 0.01, 'lr': 0.001},
+        {"params": [p for n, p in end_parameters if any(nd in n for nd in no_decay)], "weight_decay": 0.0
+            , 'lr': 0.001}]
+    # step_total = config.num_epochs * len(train_ld) * config.batch_size
+    step_total = 640 #len(train_ld)*config.batch_size // config.num_epochs
+    warmup_steps = int(step_total * config.num_warmup_steps)
+    optimizer = AdamW(optimizer_grouped_parameters, lr=config.learning_rate, eps=1e-8)
+    lr_scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps,
+                                                num_training_steps=step_total)
+
+    # # 定义优化器配置
+    # num_training_steps = config.num_epochs * len(train_ld)
+    # lr_scheduler = get_scheduler(
+    #     "linear",
+    #     optimizer=optimizer,
+    #     num_warmup_steps=config.num_warmup_steps,
+    #     num_training_steps=num_training_steps
+    # )
 
     # 分布式训练
     model.to(device)
@@ -59,9 +89,19 @@ def train(config, train_ld, valid_loader, test_loader):
         model = torch.nn.parallel.DistributedDataParallel(model, 
                                                     find_unused_parameters=True,
                                                     broadcast_buffers=True)
-    print('start to train')
+        
+    # Train!
+    print("****** Running training ******")
+    print("  Num examples = %d" %(len(train_ld)*config.batch_size))
+    print("  Num Epochs = %d" %config.num_epochs)
+    print("  Instantaneous batch size per GPU = %d"%config.batch_size)
+    print("  GPU ids = %s" %config.cuda_visible_devices)
+    print("  Total step = %d" %step_total)
+    print("  Warm up step = %d" %warmup_steps)
+    print("****** Running training ******")
+    
     model.train()
-    step_total = config.num_epochs * len(train_ld)
+    # step_total = config.num_epochs * len(train_ld)
     step_current = 0
     f1_best = 0
     for epoch in range(config.num_epochs):
@@ -111,6 +151,7 @@ def eval(valid_ld, model, tag, config):
     # valid_label = valid_loader[1]
     # 定义metric
     id2label = {i:x for i, x in enumerate(tag)}
+    label2id = {x:i for i, x in enumerate(tag)}
     metric = SpanEntityScore(id2label)
     losses = []
     model.eval()
@@ -131,8 +172,8 @@ def eval(valid_ld, model, tag, config):
         start_pred = torch.argmax(start_logits, -1)[:,1:-1].cpu().numpy()
         end_pred = torch.argmax(end_logits, -1)[:,1:-1].cpu().numpy()
         for i in range(len(start_lab)):
-            label = bert_extract_item(start_lab[i], end_lab[i])
-            pred = bert_extract_item(start_pred[i], end_pred[i])
+            label = bert_extract_item(start_lab[i], end_lab[i], label2id)
+            pred = bert_extract_item(start_pred[i], end_pred[i], label2id)
             metric.update(true_subject=label, pred_subject=pred)
         # label = bert_extract_item(batch.data['label_start'], batch.data['label_end'])
         # pred = bert_extract_item(start_logits, end_logits)
@@ -186,8 +227,8 @@ def predict(config, test_loader):
         label = []
         pred = []
         for i in range(len(start_lab)):
-            tmp_label = bert_extract_item(start_lab[i], end_lab[i])
-            tmp_pred = bert_extract_item(start_pred[i], end_pred[i])
+            tmp_label = bert_extract_item(start_lab[i], end_lab[i], label2id)
+            tmp_pred = bert_extract_item(start_pred[i], end_pred[i], label2id)
             metric.update(true_subject=tmp_label, pred_subject=tmp_pred)
             label.append(tmp_label)
             pred.append(tmp_pred)
