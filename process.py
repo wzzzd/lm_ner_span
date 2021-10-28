@@ -67,8 +67,8 @@ def train(config, train_ld, valid_loader, test_loader):
          "weight_decay": 0.01, 'lr': 0.001},
         {"params": [p for n, p in end_parameters if any(nd in n for nd in no_decay)], "weight_decay": 0.0
             , 'lr': 0.001}]
-    # step_total = config.num_epochs * len(train_ld) * config.batch_size
-    step_total = 640 #len(train_ld)*config.batch_size // config.num_epochs
+    step_total = config.num_epochs * len(train_ld) * config.batch_size
+    # step_total = 640 #len(train_ld)*config.batch_size // config.num_epochs
     warmup_steps = int(step_total * config.num_warmup_steps)
     optimizer = AdamW(optimizer_grouped_parameters, lr=config.learning_rate, eps=1e-8)
     lr_scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps,
