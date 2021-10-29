@@ -12,7 +12,6 @@
 
 ## 数据集
 * **CNER**
-    * 来自：https://github.com/lonePatient/BERT-NER-Pytorch
     * 关于简历的的数据。
     * 数据分为8类标签类别，分别为：
     ```
