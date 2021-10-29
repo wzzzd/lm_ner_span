@@ -20,14 +20,22 @@ class Config(object):
         self.world_size = 1                                         # 线程数，默认为1
         
         # 训练配置
-        self.num_epochs = 30                                        # 迭代次数
-        self.batch_size = 128                                     # 每个批次的大小
+        self.num_epochs = 40                                        # 迭代次数
+        self.batch_size = 24                                     # 每个批次的大小
         self.learning_rate = 5e-5                                   # 学习率
         self.num_warmup_steps = 0.1                                 # warm up步数
         self.sen_max_length = 128                                   # 句子最长长度
         self.padding = True                                         # 是否对输入进行padding
         self.step_save = 100
-
+        
+        # 对抗训练
+        self.adv_option = 'FGM'                                      # 是否引入对抗训练：none/FGM/PGD
+        self.adv_name = 'word_embeddings'
+        self.adv_epsilon = 1.0
+        # 混合精度训练
+        self.fp16 = False
+        self.fp16_opt_level = 'O1'                                   # 训练可选'O1'，测试可选'O3'
+        
         # 模型及路径配置
         self.initial_pretrain_model = 'bert-base-chinese'           # 加载的预训练分词器checkpoint，默认为英文。若要选择中文，替换成 bert-base-chinese
         self.initial_pretrain_tokenizer = 'bert-base-chinese'       # 加载的预训练模型checkpoint，默认为英文。若要选择中文，替换成 bert-base-chinese

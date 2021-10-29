@@ -9,7 +9,8 @@ import torch
 import logging
 from Config import Config
 from DataManager import DataManager
-from process import train, predict
+from Trainer import Trainer
+from Predictor import Predictor
 
 
 
@@ -46,11 +47,13 @@ if __name__ == '__main__':
         valid_loader = dm.get_dataset(data_type='dev')
         test_loader = dm.get_dataset(data_type='test')
         # 训练
-        train(config, train_loader, valid_loader, test_loader)
+        trainer = Trainer(config, train_loader, valid_loader, test_loader)
+        trainer.train()
     elif config.mode == 'test':
         # 测试
         test_loader = dm.get_dataset(data_type='test')
-        predict(config, test_loader)
+        predictor = Predictor(config, test_loader)
+        predictor.predict()
     else:
         print("no task going on!")
         print("you can use one of the following lists to replace the valible of Config.py. ['train', 'test', 'valid'] !")
