@@ -45,7 +45,7 @@
     python3.6
     numpy==1.19.5
     pandas==1.1.3
-    torch==1.3.0
+    torch==1.3.0 or 1.5.0
     datasets==1.10.2
     transformers==4.6.1
 ```
