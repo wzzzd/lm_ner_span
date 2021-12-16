@@ -25,7 +25,7 @@ class DataManager(object):
         # self.label2ids = {x:i for i,x in enumerate(config.tag_type)}
         # self.ids2label = {i:x for i,x in enumerate(config.tag_type)}
         # 读取tokenizer分词模型
-        self.tokenizer = AutoTokenizer.from_pretrained(config.initial_pretrain_tokenizer)    
+        self.tokenizer = BertTokenizer.from_pretrained(config.initial_pretrain_tokenizer)    
     
     
     def get_dataset(self, data_type='train'):

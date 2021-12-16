@@ -58,52 +58,55 @@ class Trainer(object):
             预训练模型
         """
         # weight decay
-        bert_parameters = self.model.bert.named_parameters()
-        start_parameters = self.model.start_fc.named_parameters()
-        end_parameters = self.model.end_fc.named_parameters()
-        no_decay = ["bias", "LayerNorm.weight"]
-        optimizer_grouped_parameters = [
-            {"params": [p for n, p in bert_parameters if not any(nd in n for nd in no_decay)],
-             "weight_decay": 0.01, 'lr': self.config.learning_rate},
-            {"params": [p for n, p in bert_parameters if any(nd in n for nd in no_decay)], "weight_decay": 0.0
-                , 'lr': self.config.learning_rate},
-            {"params": [p for n, p in start_parameters if not any(nd in n for nd in no_decay)],
-             "weight_decay": 0.01, 'lr': 0.001},
-            {"params": [p for n, p in start_parameters if any(nd in n for nd in no_decay)], "weight_decay": 0.0
-                , 'lr': 0.001},
-            {"params": [p for n, p in end_parameters if not any(nd in n for nd in no_decay)],
-             "weight_decay": 0.01, 'lr': 0.001},
-            {"params": [p for n, p in end_parameters if any(nd in n for nd in no_decay)], "weight_decay": 0.0
-                , 'lr': 0.001}]
+        # bert_parameters = self.model.bert.named_parameters()
+        # start_parameters = self.model.start_fc.named_parameters()
+        # end_parameters = self.model.end_fc.named_parameters()
+        # no_decay = ["bias", "LayerNorm.weight"]
+        # optimizer_grouped_parameters = [
+        #     {"params": [p for n, p in bert_parameters if not any(nd in n for nd in no_decay)],
+        #      "weight_decay": 0.01, 'lr': self.config.learning_rate},
+        #     {"params": [p for n, p in bert_parameters if any(nd in n for nd in no_decay)], "weight_decay": 0.0
+        #         , 'lr': self.config.learning_rate},
+        #     {"params": [p for n, p in start_parameters if not any(nd in n for nd in no_decay)],
+        #      "weight_decay": 0.01, 'lr': 0.001},
+        #     {"params": [p for n, p in start_parameters if any(nd in n for nd in no_decay)], "weight_decay": 0.0
+        #         , 'lr': 0.001},
+        #     {"params": [p for n, p in end_parameters if not any(nd in n for nd in no_decay)],
+        #      "weight_decay": 0.01, 'lr': 0.001},
+        #     {"params": [p for n, p in end_parameters if any(nd in n for nd in no_decay)], "weight_decay": 0.0
+        #         , 'lr': 0.001}]
+        # step_total = self.config.num_epochs * len(self.train_loader) * self.config.batch_size
+        # # step_total = 640 #len(train_ld)*config.batch_size // config.num_epochs
+        # warmup_steps = int(step_total * self.config.num_warmup_steps)
+        # self.optimizer = AdamW(optimizer_grouped_parameters, lr=self.config.learning_rate, eps=1e-8)
+        # self.lr_scheduler = get_linear_schedule_with_warmup(self.optimizer, num_warmup_steps=warmup_steps,
+        #                                             num_training_steps=step_total)
+        
+        # 定义优化器配置
+        num_training_steps = self.config.num_epochs * len(self.train_loader)
+        self.optimizer = AdamW(self.model.parameters(), lr=self.config.learning_rate)
+        self.lr_scheduler = get_scheduler(
+            "linear",
+            optimizer=self.optimizer,
+            num_warmup_steps=self.config.num_warmup_steps,
+            num_training_steps=num_training_steps
+        )
         step_total = self.config.num_epochs * len(self.train_loader) * self.config.batch_size
-        # step_total = 640 #len(train_ld)*config.batch_size // config.num_epochs
         warmup_steps = int(step_total * self.config.num_warmup_steps)
-        self.optimizer = AdamW(optimizer_grouped_parameters, lr=self.config.learning_rate, eps=1e-8)
-        self.lr_scheduler = get_linear_schedule_with_warmup(self.optimizer, num_warmup_steps=warmup_steps,
-                                                    num_training_steps=step_total)
-        # # 定义优化器配置
-        # num_training_steps = config.num_epochs * len(train_ld)
-        # optimizer = AdamW(model.parameters(), lr=config.learning_rate)
-        # lr_scheduler = get_scheduler(
-        #     "linear",
-        #     optimizer=optimizer,
-        #     num_warmup_steps=config.num_warmup_steps,
-        #     num_training_steps=num_training_steps
-        # )
+
+        # 混合精度训练
+        if self.config.fp16:
+            self.model, self.optimizer = amp.initialize(self.model, self.optimizer, opt_level=self.config.fp16_opt_level)
 
         # 分布式训练
         if torch.cuda.device_count() > 1:
-            model = torch.nn.parallel.DistributedDataParallel(self.model, 
-                                                        find_unused_parameters=True,
-                                                        broadcast_buffers=True)
+            self.model = torch.nn.parallel.DistributedDataParallel(self.model, 
+                                                        find_unused_parameters=True)
         # 对抗训练
         if self.config.adv_option == 'FGM':
             self.fgm = FGM(self.model, emb_name=self.config.adv_name, epsilon=self.config.adv_epsilon)
         if self.config.adv_option == 'PGD':
             self.pgd = PGD(self.model, emb_name=self.config.adv_name, epsilon=self.config.adv_epsilon)
-        # 混合精度训练
-        if self.config.fp16:
-            self.model, self.optimizer = amp.initialize(self.model, self.optimizer, opt_level=self.config.fp16_opt_level)
 
         # Train!
         print(">>>>>>>> Running training >>>>>>>>")
@@ -144,7 +147,8 @@ class Trainer(object):
         batch.data = {k:v.to(self.device) for k,v in batch.data.items()}
         outputs = self.model(**batch)
         loss = outputs[0]
-        loss = loss.mean()
+        if torch.cuda.device_count() > 1:
+            loss = loss.mean()
         # 反向传播
         if self.config.fp16:
             with amp.scale_loss(loss, self.optimizer) as scaled_loss:
@@ -169,10 +173,12 @@ class Trainer(object):
                 else:
                     self.pgd.restore_grad()
                 loss_adv = self.model(**batch)[0]
-                loss_adv.backward()                 # 反向传播，并在正常的grad基础上，累加对抗训练的梯度
+                loss_adv.backward()                      # 反向传播，并在正常的grad基础上，累加对抗训练的梯度
             self.pgd.restore()                           # 恢复embedding参数
+        # 梯度操作
         self.optimizer.step()
         self.lr_scheduler.step()
+        # self.model.zero_grad()
         self.optimizer.zero_grad()
         return loss
 
