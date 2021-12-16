@@ -1,6 +1,8 @@
 # LM_SPAN
 基于实体首尾指针SPAN的 序列标注/命名实体识别 框架。
 
+能解决嵌套实体识别问题。
+
 基于pytorch，base model使用的是bert，基于huggingface/transformers。
 
 
