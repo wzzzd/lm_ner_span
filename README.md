@@ -30,6 +30,14 @@
 <img src=./file/train.png width=100% />
 
 
+## 支持的训练模式
+
+- 混合精度训练
+- GPU多卡训练
+- 对抗训练：FGM/PGD
+- 支持中英文语料训练
+
+
 ## Requirement
 ```
     python3.6
