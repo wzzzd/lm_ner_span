@@ -29,7 +29,7 @@
 
 
 ## 训练过程
-<img src=./file/train.png width=100% />
+<img src=./file/train.png width=60% />
 
 
 ## 支持的训练模式
