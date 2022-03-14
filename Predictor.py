@@ -22,7 +22,6 @@ from utils.progressbar import ProgressBar
 from model.optimal.adversarial import FGM,PGD
 
 
-
 class Predictor(object):
     
     def __init__(self, config, test_loader):
