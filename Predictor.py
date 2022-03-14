@@ -56,6 +56,7 @@ class Predictor(object):
         # 初始化指标计算
         tag = [ x.strip() for x in open(self.config.path_datasets+'label.txt','r').readlines()]
         id2label = {i:x for i, x in enumerate(tag)}
+        label2id = {x:i for i, x in enumerate(tag)}
         metric = SpanEntityScore(id2label)
 
         progress_bar = ProgressBar(n_total=len(self.test_loader), desc='Predict')
@@ -77,8 +78,8 @@ class Predictor(object):
             label = []
             pred = []
             for i in range(len(start_lab)):
-                tmp_label = bert_extract_item(start_lab[i], end_lab[i])
-                tmp_pred = bert_extract_item(start_pred[i], end_pred[i])
+                tmp_label = bert_extract_item(start_lab[i], end_lab[i], label2id)
+                tmp_pred = bert_extract_item(start_pred[i], end_pred[i], label2id)
                 metric.update(true_subject=tmp_label, pred_subject=tmp_pred)
                 label.append(tmp_label)
                 pred.append(tmp_pred)
